@@ -1,0 +1,6 @@
+1.Context
+2.Tool Access(MCP)
+3.Output
+4.Verification(QC)
+5.Memory
+6.Automation
