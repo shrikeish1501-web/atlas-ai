@@ -6,7 +6,7 @@ import ollama
 from config import CHAT_MODEL
 from search import get_collection, search
 
-TOP_K = 5          # how many chunks to retrieve
+TOP_K = 8          # how many chunks to retrieve
 MIN_SCORE = 0.63   # chunks scoring below this are treated as "not relevant"
 NUM_CTX = 8192     # how much text the model can read at once (in tokens)
 
@@ -18,9 +18,15 @@ Rules:
 - Answer ONLY from the numbered context sources provided. Do not use outside knowledge.
 - Give short bullet points in simple language (usually 2 to 6). Include every relevant point from the sources.
 - After each fact, cite its source label in square brackets, like [S1] or [S2][S3].
-- If the sources are about the topic but do not contain the specific answer (for example a number), say what the sources DO say and state clearly that they do not give that specific value.
-- If the sources are unrelated to the question, reply exactly: {NOT_FOUND}
-- Never invent numbers, values or page numbers that are not in the sources."""
+- If the sources discuss the topic of the question but do not give the exact detail asked for (for example a specific number or value), do NOT refuse. Say what the sources DO say about the topic, then end with one bullet stating that the documents do not give that specific detail.
+- Reply with exactly "{NOT_FOUND}" ONLY if none of the sources mention the topic of the question at all.
+- Never invent numbers, values or page numbers that are not in the sources.
+
+Example of a partial answer (follow the pattern, do not copy the content):
+Question: What wall thickness should I use for a moulded part?
+Answer:
+- The sources say wall thickness should be reasonably uniform to avoid sink marks and warpage [S1].
+- The documents do not give a specific wall thickness value."""
 
 
 def model_settings(model_name: str):
