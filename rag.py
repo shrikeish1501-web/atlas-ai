@@ -7,9 +7,8 @@ from config import CHAT_MODEL
 from search import get_collection, search
 
 TOP_K = 5          # how many chunks to retrieve
-MIN_SCORE = 0.60   # chunks scoring below this are treated as "not relevant"
+MIN_SCORE = 0.63   # chunks scoring below this are treated as "not relevant"
 NUM_CTX = 8192     # how much text the model can read at once (in tokens)
-THINK = True       # keeps the model's reasoning separate from its final answer
 
 NOT_FOUND = "I couldn't find this in the documents."
 
@@ -17,11 +16,22 @@ SYSTEM_PROMPT = f"""You are ATLAS AI, an engineering assistant for mechanical de
 
 Rules:
 - Answer ONLY from the numbered context sources provided. Do not use outside knowledge.
-- Give 2 to 5 short bullet points in simple language. Include every relevant point from the sources.
+- Give short bullet points in simple language (usually 2 to 6). Include every relevant point from the sources.
 - After each fact, cite its source label in square brackets, like [S1] or [S2][S3].
 - If the sources are about the topic but do not contain the specific answer (for example a number), say what the sources DO say and state clearly that they do not give that specific value.
 - If the sources are unrelated to the question, reply exactly: {NOT_FOUND}
 - Never invent numbers, values or page numbers that are not in the sources."""
+
+
+def model_settings(model_name: str):
+    """Return (think, sampling options) that suit the chosen model.
+
+    - "instruct" builds answer directly, so the `think` option must not be sent.
+    - Other Qwen3 builds reason first; think=True keeps that reasoning out of the answer.
+    """
+    if "instruct" in model_name.lower():
+        return None, {"temperature": 0.3, "top_p": 0.8, "top_k": 20}
+    return True, {"temperature": 0.6, "top_p": 0.95, "top_k": 20}
 
 
 def short_name(source: str) -> str:
@@ -59,17 +69,14 @@ def clean_answer(text: str) -> str:
 
 
 def generate_answer(messages: list[dict]) -> str:
-    """Ask Qwen3 for the answer and return it as clean text."""
+    """Ask the chat model for the answer and return it as clean text."""
+    think, sampling = model_settings(CHAT_MODEL)
+    extra = {} if think is None else {"think": think}
     response = ollama.chat(
         model=CHAT_MODEL,
         messages=messages,
-        think=THINK,
-        options={
-            "temperature": 0.6,
-            "top_p": 0.95,
-            "top_k": 20,
-            "num_ctx": NUM_CTX,
-        },
+        options={**sampling, "num_ctx": NUM_CTX},
+        **extra,
     )
     return clean_answer(response["message"]["content"])
 
@@ -85,7 +92,10 @@ def cited_sources(answer: str, hits: list[dict]) -> list[tuple[int, dict]]:
 
 def main() -> None:
     collection = get_collection()
-    print(f"ATLAS AI ready. {collection.count()} chunks loaded. Type q to quit.")
+    print(
+        f"ATLAS AI ready. {collection.count()} chunks loaded. "
+        f"Model: {CHAT_MODEL}. Type q to quit."
+    )
 
     while True:
         question = input("\nYou> ").strip()
