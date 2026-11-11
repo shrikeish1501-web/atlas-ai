@@ -149,11 +149,11 @@ def first_solid_body(doc):
 
 
 def read_volume_mm3(doc, body):
-    """Try both routes. Returns (volume in mm3 or None, route used, list of problems)."""
+    """Try two routes. Returns (volume in mm3 or None, route used, list of problems)."""
     problems = []
     routes = (
-        ("mass property object", lambda: volume_via_mass_property(doc)),
         ("body mass properties", lambda: volume_via_body(body)),
+        ("mass property object", lambda: volume_via_mass_property(doc)),
     )
     for name, read in routes:
         try:
@@ -163,14 +163,21 @@ def read_volume_mm3(doc, body):
     return None, "", problems
 
 
-def check_part(doc, spec: dict) -> None:
-    """Print SolidWorks' own measurements next to the predicted ones."""
+def check_part(doc, spec: dict) -> bool:
+    """Print SolidWorks' own measurements next to the predicted ones.
+
+    Returns True only if the size, the volume and the face count all match.
+    """
+    results = []
+
     try:
         measured = part_size_mm(doc)
         expected = expected_size_mm(spec)
         ok = all(abs(m - e) <= 0.01 for m, e in zip(measured, expected))
+        results.append(ok)
         print(f"Size X, Y, Z (mm): measured {measured} | expected {expected} | {'PASS' if ok else 'CHECK'}")
     except Exception as error:
+        results.append(False)
         print(f"(could not read the size: {error})")
 
     try:
@@ -181,10 +188,12 @@ def check_part(doc, spec: dict) -> None:
 
     volume, route, problems = read_volume_mm3(doc, body)
     if volume is None:
+        results.append(False)
         print("(could not read the volume)")
     else:
         expected_volume = expected_volume_mm3(spec)
         ok = abs(volume - expected_volume) <= 0.001 * expected_volume
+        results.append(ok)
         print(
             f"Volume (mm3): measured {volume:.2f} | expected {expected_volume:.2f} | "
             f"{'PASS' if ok else 'CHECK'}  [via {route}]"
@@ -192,17 +201,20 @@ def check_part(doc, spec: dict) -> None:
     for problem in problems:
         print(f"   note - failed method: {problem}")
 
-    if body is not None:
+    if body is None:
+        results.append(False)
+    else:
         try:
             faces = body.GetFaceCount()
             expected_count = expected_faces(spec)
-            print(
-                f"Faces: measured {faces} | expected {expected_count} | "
-                f"{'PASS' if faces == expected_count else 'CHECK'}"
-            )
+            ok = faces == expected_count
+            results.append(ok)
+            print(f"Faces: measured {faces} | expected {expected_count} | {'PASS' if ok else 'CHECK'}")
         except Exception as error:
+            results.append(False)
             print(f"(could not count the faces: {error})")
 
+    return all(results)
 #------------Command Line--------------------
 
 def load_specs(args: list) -> dict:

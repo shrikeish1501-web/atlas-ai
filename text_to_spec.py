@@ -32,12 +32,14 @@ cylinder: {"part_type": "cylinder", "name": "...", "units": "mm", "diameter": D,
 
 Rules:
 - Every plate must include length, width and thickness. Every cylinder must include diameter and length. All of them are plain numbers.
+- A rod, bar, shaft, pin, round stock, tube, pipe, bushing, sleeve, ring or spacer is a "cylinder". Its outside diameter (OD) is "diameter". A bore, a hole through the middle, or an inside diameter (ID) is "bore_diameter". A tube or pipe always has a bore.
+- A plate, sheet, slab, block or flat bar is a "plate": length, width, and thickness (its third dimension).
 - All sizes are in millimetres. Convert other units first (1 cm = 10 mm, 1 inch = 25.4 mm, 1 m = 1000 mm). "units" is always "mm".
 - "name" is a short CamelCase name without spaces, for example "MountingPlate".
 - A plate lies flat. Hole positions x and y are measured from the CENTRE of the plate in mm: x along the length (positive to the right), y along the width (positive upwards).
 - If the user gives no hole positions: 1 hole goes at x=0, y=0. 2 holes go on the centreline (y=0) at x = -(length/2 - 15) and x = +(length/2 - 15). 4 holes go in the four corners at x = +/-(length/2 - 15) and y = +/-(width/2 - 15).
 - Leave "holes" out when the plate has no holes. Leave "bore_diameter" out when the cylinder has no bore.
-- If the request is not a plate or a cylinder, or a needed size is missing, output {"part_type": "unsupported", "units": "mm", "reason": "<one short sentence>"}.
+- Use "unsupported" ONLY when the shape cannot be a plate or a cylinder (for example a gear, bolt, bracket or spring), or when a needed size is missing: {"part_type": "unsupported", "units": "mm", "reason": "<one short sentence>"}.
 - Never invent a main size or a hole diameter that the user did not give."""
 
 
@@ -63,9 +65,19 @@ EXAMPLES = (
                    {"diameter": 6, "x": -35, "y": 15}, {"diameter": 6, "x": 35, "y": 15}]},
     )
     + _example(
+        "a block 50 by 30 by 20 mm",
+        {"part_type": "plate", "name": "Block", "units": "mm",
+         "length": 50, "width": 30, "thickness": 20},
+    )
+    + _example(
         "round bar 30 mm diameter, 80 mm long, with a 10 mm bore",
         {"part_type": "cylinder", "name": "RoundBar", "units": "mm",
          "diameter": 30, "length": 80, "bore_diameter": 10},
+    )
+    + _example(
+        "bushing with 20 mm outside diameter, 12 mm inside diameter, 25 mm long",
+        {"part_type": "cylinder", "name": "Bushing", "units": "mm",
+         "diameter": 20, "length": 25, "bore_diameter": 12},
     )
     + _example(
         "a gear with 20 teeth",
